@@ -1,4 +1,3 @@
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -31,7 +30,6 @@ public class Main {
                     resp.write(content);
                     resp.flush();
                 }
-
                 final var length = Files.size(filePath);
                 resp.write((
                         "HTTP/1.1 200 OK\r\n" +
@@ -42,12 +40,8 @@ public class Main {
                 ).getBytes());
                 Files.copy(filePath, resp);
                 resp.flush();
-
             });
         }
-
-
         server.listen(port);
-
     }
 }

@@ -1,23 +1,25 @@
-import java.io.BufferedOutputStream;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URLEncodedUtils;
+
 import java.io.BufferedReader;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Request {
-
     private String method;
     private String path;
     private String protocol;
     private Map<String, String> headers;
     private String body;
-
-
-
-
+    private Map<String, String> queryParams;
 
     public Request(BufferedReader in, BufferedOutputStream out) throws IOException {
         headers = new HashMap<>();
+        queryParams = new HashMap<>();
         parse(in, out);
     }
 
@@ -41,6 +43,14 @@ public class Request {
         return body;
     }
 
+    public String getQueryParam(String name) {
+        return queryParams.get(name);
+    }
+
+    public Map<String, String> getQueryParams() {
+        return queryParams;
+    }
+
     private void parse(BufferedReader in, BufferedOutputStream out) throws IOException {
         String line = in.readLine();
         String[] requestLine = line.split(" ");
@@ -53,11 +63,20 @@ public class Request {
                             "\r\n"
             ).getBytes());
             out.flush();
-            return;  // Завершит метод connectionSocket
+            return;
+        }
+
+        String[] pathAndQuery = requestLine[1].split("\\?", 2);
+        path = pathAndQuery[0];
+
+        if (pathAndQuery.length > 1) {
+            List<NameValuePair> params = URLEncodedUtils.parse(pathAndQuery[1], StandardCharsets.UTF_8);
+            for (NameValuePair param : params) {
+                queryParams.put(param.getName(), param.getValue());
+            }
         }
 
         method = requestLine[0];
-        path = requestLine[1];
         protocol = requestLine[2];
         body = null;
 
@@ -77,25 +96,17 @@ public class Request {
         StringBuilder bodyBuilder = new StringBuilder();
         while ((line = in.readLine()) != null) {
             if (line.isEmpty()) {
-                // пустая строка означает начало тела запроса
                 inBody = true;
                 continue;
             }
-
 
             if (line.contains(": ") && !inBody) {
                 String[] header = line.split(": ");
                 headers.put(header[0], header[1]);
             }
 
-
-            if (line.isEmpty()) {
-                // пустая строка означает начало тела запроса
-                inBody = true;
-                continue;
-            }
             if (inBody) {
-                int bodyLength = Integer.parseInt(headers.getOrDefault("Content-length", "1024"));
+                int bodyLength = Integer.parseInt(headers.getOrDefault("Content-length", "4096"));
                 char[] buffer = new char[bodyLength];
                 int bytesRead = 0;
                 while (bytesRead < bodyLength) {
@@ -111,5 +122,6 @@ public class Request {
         }
     }
 }
+
 
 
